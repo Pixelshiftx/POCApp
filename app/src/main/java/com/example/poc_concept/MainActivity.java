@@ -1,6 +1,7 @@
 package com.example.poc_concept;
 
 import android.os.Bundle;
+import android.util.Base64;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -18,6 +19,8 @@ import androidx.navigation.NavController;
 import androidx.navigation.Navigation;
 import androidx.navigation.ui.AppBarConfiguration;
 import androidx.navigation.ui.NavigationUI;
+
+import java.security.SecureRandom;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -55,9 +58,11 @@ public class MainActivity extends AppCompatActivity {
     private void requestPlayIntegrityToken() {
         IntegrityManager integrityManager = IntegrityManagerFactory.create(this);
 
+        String secureNonce = generateSecureNonce();
+
         IntegrityTokenRequest request = IntegrityTokenRequest.builder()
                 .setCloudProjectNumber(Long.parseLong(PROJECT_NUMBER))
-                .setNonce("secure_nonce_123456") // Replace with secure, random nonce for production
+                .setNonce(secureNonce) // Replace with secure, random nonce for production
                 .build();
 
         integrityManager.requestIntegrityToken(request)
@@ -89,5 +94,12 @@ public class MainActivity extends AppCompatActivity {
     public boolean onSupportNavigateUp() {
         NavController navController = Navigation.findNavController(this, R.id.nav_host_fragment_content_main);
         return NavigationUI.navigateUp(navController, appBarConfiguration) || super.onSupportNavigateUp();
+    }
+
+    private String generateSecureNonce() {
+        byte[] nonceBytes = new byte[32]; // 256 bits
+        new SecureRandom().nextBytes(nonceBytes);
+        // Use web-safe Base64 (NO_WRAP and URL_SAFE flags), and strip "=" padding
+        return Base64.encodeToString(nonceBytes, Base64.NO_WRAP | Base64.URL_SAFE).replace("=", "");
     }
 }

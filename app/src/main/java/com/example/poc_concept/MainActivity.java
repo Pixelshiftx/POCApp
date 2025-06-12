@@ -20,6 +20,11 @@ import androidx.navigation.Navigation;
 import androidx.navigation.ui.AppBarConfiguration;
 import androidx.navigation.ui.NavigationUI;
 
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.security.SecureRandom;
 
 public class MainActivity extends AppCompatActivity {
@@ -62,15 +67,18 @@ public class MainActivity extends AppCompatActivity {
 
         IntegrityTokenRequest request = IntegrityTokenRequest.builder()
                 .setCloudProjectNumber(Long.parseLong(PROJECT_NUMBER))
-                .setNonce(secureNonce) // Replace with secure, random nonce for production
+                .setNonce(secureNonce)
                 .build();
 
         integrityManager.requestIntegrityToken(request)
                 .addOnSuccessListener(response -> {
                     String token = response.token();
                     Log.d(TAG, "Integrity Token: " + token);
+                    Log.d(TAG, "Nonce: " + secureNonce);
                     Toast.makeText(this, "Integrity Token received!", Toast.LENGTH_SHORT).show();
-                    // TODO: send token to server for validation
+
+                    // Send to local server for validation
+                    new Thread(() -> sendTokenToServer(token, secureNonce)).start();
                 })
                 .addOnFailureListener(e -> {
                     Log.e(TAG, "Integrity Token request failed", e);
@@ -102,4 +110,56 @@ public class MainActivity extends AppCompatActivity {
         // Use web-safe Base64 (NO_WRAP and URL_SAFE flags), and strip "=" padding
         return Base64.encodeToString(nonceBytes, Base64.NO_WRAP | Base64.URL_SAFE).replace("=", "");
     }
+
+    private void sendTokenToServer(String token, String nonce) {
+        HttpURLConnection conn = null;
+        try {
+            URL url = new URL("http://10.0.2.2:3000/verify-integrity");
+
+            conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("POST");
+            conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
+            conn.setDoOutput(true);
+            conn.setDoInput(true);
+
+            // Build the JSON payload
+            String jsonInputString = String.format(
+                    "{\"integrityToken\":\"%s\",\"expectedNonce\":\"%s\"}",
+                    token, nonce
+            );
+
+            // Write JSON to request body
+            try (OutputStream os = conn.getOutputStream()) {
+                byte[] input = jsonInputString.getBytes("UTF-8");
+                os.write(input, 0, input.length);
+                os.flush();
+            }
+
+            int code = conn.getResponseCode();
+            Log.d(TAG, "Server Response Code: " + code);
+
+            BufferedReader reader;
+            if (code >= 200 && code < 300) {
+                reader = new BufferedReader(new InputStreamReader(conn.getInputStream(), "UTF-8"));
+            } else {
+                reader = new BufferedReader(new InputStreamReader(conn.getErrorStream(), "UTF-8"));
+            }
+
+            StringBuilder response = new StringBuilder();
+            String line;
+            while ((line = reader.readLine()) != null) {
+                response.append(line.trim());
+            }
+
+            Log.d(TAG, "Server Response: " + response.toString());
+
+        } catch (Exception e) {
+            Log.e(TAG, "Error sending token to server", e);
+        } finally {
+            if (conn != null) {
+                conn.disconnect();
+            }
+        }
+    }
+
 }

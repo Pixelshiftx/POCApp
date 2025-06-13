@@ -49,12 +49,7 @@ public class MainActivity extends AppCompatActivity {
         appBarConfiguration = new AppBarConfiguration.Builder(navController.getGraph()).build();
         NavigationUI.setupActionBarWithNavController(this, navController, appBarConfiguration);
 
-        // Floating Action Button
-        binding.fab.setOnClickListener(view ->
-                Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
-                        .setAnchorView(R.id.fab)
-                        .setAction("Action", null).show()
-        );
+
 
         // Request Play Integrity token
         requestPlayIntegrityToken();
@@ -114,22 +109,21 @@ public class MainActivity extends AppCompatActivity {
 
     private void sendTokenToServer(String token, String nonce) {
         HttpURLConnection conn = null;
-        try {
-            URL url = new URL("http://172.20.10.9:3000/verify-integrity");
+        boolean isVerified = false; // default to false on failure
 
+        try {
+            URL url = new URL("http://192.168.180.26:3000/verify-integrity");
             conn = (HttpURLConnection) url.openConnection();
             conn.setRequestMethod("POST");
             conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
             conn.setDoOutput(true);
             conn.setDoInput(true);
 
-            // Build the JSON payload
             String jsonInputString = String.format(
                     "{\"integrityToken\":\"%s\",\"expectedNonce\":\"%s\"}",
                     token, nonce
             );
 
-            // Write JSON to request body
             try (OutputStream os = conn.getOutputStream()) {
                 byte[] input = jsonInputString.getBytes("UTF-8");
                 os.write(input, 0, input.length);
@@ -137,8 +131,6 @@ public class MainActivity extends AppCompatActivity {
             }
 
             int code = conn.getResponseCode();
-            Log.d(TAG, "Server Response Code: " + code);
-
             BufferedReader reader;
             if (code >= 200 && code < 300) {
                 reader = new BufferedReader(new InputStreamReader(conn.getInputStream(), "UTF-8"));
@@ -152,14 +144,30 @@ public class MainActivity extends AppCompatActivity {
                 response.append(line.trim());
             }
 
-            Log.d(TAG, "Server Response: " + response.toString());
+            String serverResponse = response.toString();
+            Log.d(TAG, "Server Response: " + serverResponse);
+
+            // ✅ Extract the 'verified' boolean from JSON
+            isVerified = serverResponse.contains("\"verified\":true");
 
         } catch (Exception e) {
             Log.e(TAG, "Error sending token to server", e);
         } finally {
-            if (conn != null) {
-                conn.disconnect();
-            }
+            if (conn != null) conn.disconnect();
+
+            // 🔄 Now switch to UI thread
+            boolean finalIsVerified = isVerified;
+            runOnUiThread(() -> {
+                Bundle bundle = new Bundle();
+                bundle.putBoolean("verified_result", finalIsVerified);
+
+                NavController navController = Navigation.findNavController(MainActivity.this, R.id.nav_host_fragment_content_main);
+                if (finalIsVerified) {
+                    navController.navigate(R.id.SecondFragment, bundle);
+                } else {
+                    navController.navigate(R.id.FirstFragment, bundle);
+                }
+            });
         }
     }
 

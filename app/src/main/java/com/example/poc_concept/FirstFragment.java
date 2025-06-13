@@ -4,8 +4,8 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import androidx.appcompat.app.AlertDialog;
 
+import androidx.appcompat.app.AlertDialog;
 import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
 import androidx.navigation.fragment.NavHostFragment;
@@ -29,14 +29,27 @@ public class FirstFragment extends Fragment {
     public void onViewCreated(@NonNull View view, Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        // Existing nav button behavior
-        binding.buttonFirst.setOnClickListener(v ->
+        // Check if it came here due to failed verification
+        Bundle args = getArguments();
+        boolean isVerified;
+
+        if (args != null && args.containsKey("verified_result")) {
+            isVerified = args.getBoolean("verified_result", true);
+        } else {
+            isVerified = true;
+        }
+
+        if (!isVerified) {
+            showErrorDialog(); // Show the error once fragment loads
+        }
+
+        binding.NextButton.setOnClickListener(v ->
                 NavHostFragment.findNavController(FirstFragment.this)
                         .navigate(R.id.action_FirstFragment_to_SecondFragment)
         );
 
-        // NEW: Add listener to error popup button
-        binding.errorButton.setOnClickListener(v -> showErrorDialog());
+
+
     }
 
     private void showErrorDialog() {

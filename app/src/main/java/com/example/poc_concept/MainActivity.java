@@ -65,6 +65,7 @@ public class MainActivity extends AppCompatActivity {
 
         String secureNonce = generateSecureNonce();
 
+
         IntegrityTokenRequest request = IntegrityTokenRequest.builder()
                 .setCloudProjectNumber(Long.parseLong(PROJECT_NUMBER))
                 .setNonce(secureNonce)
@@ -108,13 +109,13 @@ public class MainActivity extends AppCompatActivity {
         byte[] nonceBytes = new byte[32]; // 256 bits
         new SecureRandom().nextBytes(nonceBytes);
         // Use web-safe Base64 (NO_WRAP and URL_SAFE flags), and strip "=" padding
-        return Base64.encodeToString(nonceBytes, Base64.NO_WRAP | Base64.URL_SAFE).replace("=", "");
+        return Base64.encodeToString(nonceBytes, Base64.NO_WRAP | Base64.URL_SAFE);
     }
 
     private void sendTokenToServer(String token, String nonce) {
         HttpURLConnection conn = null;
         try {
-            URL url = new URL("http://10.0.2.2:3000/verify-integrity");
+            URL url = new URL("http://172.20.10.9:3000/verify-integrity");
 
             conn = (HttpURLConnection) url.openConnection();
             conn.setRequestMethod("POST");

@@ -35,7 +35,7 @@ android {
 }
 
 dependencies {
-    implementation (libs.google.play.integrity)
+    implementation("com.google.android.play:integrity:1.4.0")
     implementation(libs.appcompat)
     implementation(libs.material)
     implementation(libs.constraintlayout)

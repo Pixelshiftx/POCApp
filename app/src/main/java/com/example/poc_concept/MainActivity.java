@@ -32,6 +32,7 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -53,37 +54,31 @@ public class MainActivity extends AppCompatActivity {
         appBarConfiguration = new AppBarConfiguration.Builder(navController.getGraph()).build();
         NavigationUI.setupActionBarWithNavController(this, navController, appBarConfiguration);
 
-        // Floating Action Button
-        binding.fab.setOnClickListener(view ->
-                Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
-                        .setAnchorView(R.id.fab)
-                        .setAction("Action", null).show()
-        );
+
 
         // Request Play Integrity token using Standard API
-        callStandardIntegrityApi(this);
+        callStandardIntegrityApi();
     }
 
-    public static void callStandardIntegrityApi(Context context) {
+    public void callStandardIntegrityApi() {
         String originalPayload = "action=purchase&userId=123&timestamp=1723468993";
         String requestHash = sha256Base64Url(originalPayload);
 
-        StandardIntegrityManager integrityManager =
-                IntegrityManagerFactory.createStandard(context);
+        StandardIntegrityManager integrityManager = IntegrityManagerFactory.createStandard(this);
+
         integrityManager.prepareIntegrityToken(
                         StandardIntegrityManager.PrepareIntegrityTokenRequest.builder()
                                 .setCloudProjectNumber(Long.parseLong(PROJECT_NUMBER))
                                 .build())
                 .addOnSuccessListener(tokenProvider -> {
-                    tokenProvider
-                            .request(StandardIntegrityManager.StandardIntegrityTokenRequest.builder()
-                                    .setRequestHash(requestHash)
-                                    .build())
+                    tokenProvider.request(
+                                    StandardIntegrityTokenRequest.builder()
+                                            .setRequestHash(requestHash)
+                                            .build())
                             .addOnSuccessListener(response -> {
                                 String integrityToken = response.token();
                                 Log.d(TAG, "Integrity Token: " + integrityToken);
-                                Log.d(TAG, "Hash : " + requestHash);
-                                sendToBackend(integrityToken, requestHash);
+                                sendToBackend(integrityToken, requestHash); // now uses instance method
                             })
                             .addOnFailureListener(e -> Log.e(TAG, "Token request failed", e));
                 })
@@ -101,11 +96,12 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private static void sendToBackend(String integrityToken, String requestHash) {
+    private void sendToBackend(String integrityToken, String requestHash) {
         new Thread(() -> {
+            boolean isVerified = false;
+
             try {
-                // TODO: Replace with your actual backend IP address or domain
-                URL url = new URL("http://172.20.10.9:3000/verify-integrity");
+                URL url = new URL("http://192.168.208.26:3000/verify-integrity");
                 HttpURLConnection conn = (HttpURLConnection) url.openConnection();
                 conn.setRequestMethod("POST");
                 conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
@@ -133,24 +129,30 @@ public class MainActivity extends AppCompatActivity {
                     String responseBody = response.toString();
                     Log.d(TAG, "Backend response: " + responseBody);
 
-                    // OPTIONAL: Parse message field if response is JSON like { "message": "something" }
-                    try {
-                        JSONObject json_ = new JSONObject(responseBody);
-                        if (json_.has("message")) {
-                            String message = json_.getString("message");
-                            Log.d(TAG, "Backend message: " + message);
-                        }
-                    } catch (JSONException e) {
-                        Log.e(TAG, "Failed to parse JSON response", e);
-                    }
+                    JSONObject jsons = new JSONObject(responseBody);
+                    isVerified = jsons.optBoolean("verified", false);
 
-                } catch (IOException e) {
-                    Log.e(TAG, "Error reading backend response", e);
+                } catch (IOException | JSONException e) {
+                    Log.e(TAG, "Error parsing backend response", e);
                 }
 
             } catch (Exception e) {
                 Log.e(TAG, "Error sending token to backend", e);
             }
+
+            boolean finalIsVerified = isVerified;
+            runOnUiThread(() -> {
+                Bundle bundle = new Bundle();
+                bundle.putBoolean("verified_result", finalIsVerified);
+
+                NavController navController = Navigation.findNavController(this, R.id.nav_host_fragment_content_main);
+                if (finalIsVerified) {
+                    navController.navigate(R.id.SecondFragment, bundle);
+                } else {
+                    navController.navigate(R.id.FirstFragment, bundle);
+                }
+            });
+
         }).start();
     }
 
@@ -171,76 +173,76 @@ public class MainActivity extends AppCompatActivity {
         NavController navController = Navigation.findNavController(this, R.id.nav_host_fragment_content_main);
         return NavigationUI.navigateUp(navController, appBarConfiguration) || super.onSupportNavigateUp();
     }
-
-    private String generateSecureNonce() {
-        byte[] nonceBytes = new byte[32]; // 256 bits
-        new SecureRandom().nextBytes(nonceBytes);
-        // Use web-safe Base64 (NO_WRAP and URL_SAFE flags), and strip "=" padding
-        return Base64.encodeToString(nonceBytes, Base64.NO_WRAP | Base64.URL_SAFE);
-    }
-
-    private void sendTokenToServer(String token, String nonce) {
-        HttpURLConnection conn = null;
-        boolean isVerified = false; // default to false on failure
-
-        try {
-            URL url = new URL("http://192.168.180.26:3000/verify-integrity");
-            conn = (HttpURLConnection) url.openConnection();
-            conn.setRequestMethod("POST");
-            conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
-            conn.setDoOutput(true);
-            conn.setDoInput(true);
-
-            String jsonInputString = String.format(
-                    "{\"integrityToken\":\"%s\",\"expectedNonce\":\"%s\"}",
-                    token, nonce
-            );
-
-            try (OutputStream os = conn.getOutputStream()) {
-                byte[] input = jsonInputString.getBytes("UTF-8");
-                os.write(input, 0, input.length);
-                os.flush();
-            }
-
-            int code = conn.getResponseCode();
-            BufferedReader reader;
-            if (code >= 200 && code < 300) {
-                reader = new BufferedReader(new InputStreamReader(conn.getInputStream(), "UTF-8"));
-            } else {
-                reader = new BufferedReader(new InputStreamReader(conn.getErrorStream(), "UTF-8"));
-            }
-
-            StringBuilder response = new StringBuilder();
-            String line;
-            while ((line = reader.readLine()) != null) {
-                response.append(line.trim());
-            }
-
-            String serverResponse = response.toString();
-            Log.d(TAG, "Server Response: " + serverResponse);
-
-            // ✅ Extract the 'verified' boolean from JSON
-            isVerified = serverResponse.contains("\"verified\":true");
-
-        } catch (Exception e) {
-            Log.e(TAG, "Error sending token to server", e);
-        } finally {
-            if (conn != null) conn.disconnect();
-
-            // 🔄 Now switch to UI thread
-            boolean finalIsVerified = isVerified;
-            runOnUiThread(() -> {
-                Bundle bundle = new Bundle();
-                bundle.putBoolean("verified_result", finalIsVerified);
-
-                NavController navController = Navigation.findNavController(MainActivity.this, R.id.nav_host_fragment_content_main);
-                if (finalIsVerified) {
-                    navController.navigate(R.id.SecondFragment, bundle);
-                } else {
-                    navController.navigate(R.id.FirstFragment, bundle);
-                }
-            });
-        }
-    }
+//
+//    private String generateSecureNonce() {
+//        byte[] nonceBytes = new byte[32]; // 256 bits
+//        new SecureRandom().nextBytes(nonceBytes);
+//        // Use web-safe Base64 (NO_WRAP and URL_SAFE flags), and strip "=" padding
+//        return Base64.encodeToString(nonceBytes, Base64.NO_WRAP | Base64.URL_SAFE);
+//    }
+//
+//    private void sendTokenToServer(String token, String nonce) {
+//        HttpURLConnection conn = null;
+//        boolean isVerified = false; // default to false on failure
+//
+//        try {
+//            URL url = new URL("http://192.168.208.26:3000/verify-integrity");
+//            conn = (HttpURLConnection) url.openConnection();
+//            conn.setRequestMethod("POST");
+//            conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
+//            conn.setDoOutput(true);
+//            conn.setDoInput(true);
+//
+//            String jsonInputString = String.format(
+//                    "{\"integrityToken\":\"%s\",\"expectedNonce\":\"%s\"}",
+//                    token, nonce
+//            );
+//
+//            try (OutputStream os = conn.getOutputStream()) {
+//                byte[] input = jsonInputString.getBytes("UTF-8");
+//                os.write(input, 0, input.length);
+//                os.flush();
+//            }
+//
+//            int code = conn.getResponseCode();
+//            BufferedReader reader;
+//            if (code >= 200 && code < 300) {
+//                reader = new BufferedReader(new InputStreamReader(conn.getInputStream(), "UTF-8"));
+//            } else {
+//                reader = new BufferedReader(new InputStreamReader(conn.getErrorStream(), "UTF-8"));
+//            }
+//
+//            StringBuilder response = new StringBuilder();
+//            String line;
+//            while ((line = reader.readLine()) != null) {
+//                response.append(line.trim());
+//            }
+//
+//            String serverResponse = response.toString();
+//            Log.d(TAG, "Server Response: " + serverResponse);
+//
+//            // ✅ Extract the 'verified' boolean from JSON
+//            isVerified = serverResponse.contains("\"verified\":true");
+//
+//        } catch (Exception e) {
+//            Log.e(TAG, "Error sending token to server", e);
+//        } finally {
+//            if (conn != null) conn.disconnect();
+//
+//            // 🔄 Now switch to UI thread
+//            boolean finalIsVerified = isVerified;
+//            runOnUiThread(() -> {
+//                Bundle bundle = new Bundle();
+//                bundle.putBoolean("verified_result", finalIsVerified);
+//
+//                NavController navController = Navigation.findNavController(MainActivity.this, R.id.nav_host_fragment_content_main);
+//                if (finalIsVerified) {
+//                    navController.navigate(R.id.SecondFragment, bundle);
+//                } else {
+//                    navController.navigate(R.id.FirstFragment, bundle);
+//                }
+//            });
+//        }
+//    }
 
 }

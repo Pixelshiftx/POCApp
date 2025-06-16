@@ -55,7 +55,7 @@ public class FirstFragment extends Fragment {
     private void showErrorDialog() {
         new AlertDialog.Builder(requireContext())
                 .setTitle("Integrity Check Failed")
-                .setMessage("This app could not verify its integrity. Please reinstall from Google Play.")
+                .setMessage("This app could not verify its integrity. Please try again.")
                 .setPositiveButton("OK", null)
                 .setCancelable(false)
                 .show();

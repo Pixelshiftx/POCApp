@@ -1,14 +1,13 @@
-package com.example.poc_concept;
+package id.com.uiux.mobile.dev;
 
-import android.content.Context;
 import android.os.Bundle;
 import android.util.Base64;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 
-import com.example.poc_concept.databinding.ActivityMainBinding;
-import com.google.android.material.snackbar.Snackbar;
+import id.com.uiux.mobile.dev.R;
+import id.com.uiux.mobile.dev.databinding.ActivityMainBinding;
 import com.google.android.play.core.integrity.IntegrityManagerFactory;
 import com.google.android.play.core.integrity.StandardIntegrityManager;
 import com.google.android.play.core.integrity.StandardIntegrityManager.StandardIntegrityTokenRequest;
@@ -32,13 +31,12 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.security.SecureRandom;
 
 public class MainActivity extends AppCompatActivity {
 
     private static final String TAG = "PlayIntegrity";
 
-    private static final String PROJECT_NUMBER = "263046549381";
+    private static final String PROJECT_NUMBER = "321385566680";
     private AppBarConfiguration appBarConfiguration;
     private ActivityMainBinding binding;
 
@@ -101,7 +99,7 @@ public class MainActivity extends AppCompatActivity {
             boolean isVerified = false;
 
             try {
-                URL url = new URL("http://192.168.208.26:3000/verify-integrity");
+                URL url = new URL("http://192.168.60.26:3000/verify-integrity");
                 HttpURLConnection conn = (HttpURLConnection) url.openConnection();
                 conn.setRequestMethod("POST");
                 conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8");

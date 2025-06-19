@@ -1,4 +1,4 @@
-package com.example.poc_concept;
+package id.com.uiux.mobile.dev;
 
 import android.os.Bundle;
 import android.view.LayoutInflater;
@@ -9,7 +9,8 @@ import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
 import androidx.navigation.fragment.NavHostFragment;
 
-import com.example.poc_concept.databinding.FragmentSecondBinding;
+import id.com.uiux.mobile.dev.R;
+import id.com.uiux.mobile.dev.databinding.FragmentSecondBinding;
 
 public class SecondFragment extends Fragment {
 

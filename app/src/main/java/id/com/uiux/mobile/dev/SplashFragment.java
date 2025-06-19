@@ -1,4 +1,4 @@
-package com.example.poc_concept;
+package id.com.uiux.mobile.dev;
 
 import android.os.Bundle;
 
@@ -7,6 +7,8 @@ import androidx.fragment.app.Fragment;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+
+import id.com.uiux.mobile.dev.R;
 
 /**
  * A simple {@link Fragment} subclass.

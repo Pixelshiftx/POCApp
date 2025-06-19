@@ -7,7 +7,7 @@
 
         <fragment
             android:id="@+id/FirstFragment"
-            android:name="com.example.poc_concept.FirstFragment"
+            android:name="id.com.uiux.mobile.dev.FirstFragment"
             android:label="Fail"
             tools:layout="@layout/fragment_first">
 
@@ -17,13 +17,13 @@
     </fragment>
     <fragment
         android:id="@+id/SplashFragment"
-        android:name="com.example.poc_concept.SplashFragment"
+        android:name="id.com.uiux.mobile.dev.SplashFragment"
         android:label=""
         tools:layout="@layout/fragment_splash" />
 
     <fragment
         android:id="@+id/SecondFragment"
-        android:name="com.example.poc_concept.SecondFragment"
+        android:name="id.com.uiux.mobile.dev.SecondFragment"
         android:label="Success!"
         tools:layout="@layout/fragment_second">
 

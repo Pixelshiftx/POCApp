@@ -1,13 +1,14 @@
 plugins {
     alias(libs.plugins.android.application)
+    id("com.google.gms.google-services")
 }
 
 android {
-    namespace = "com.example.poc_concept"
+    namespace = "id.com.uiux.mobile.dev"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.example.poc_concept"
+        applicationId = "id.com.uiux.mobile.dev"
         minSdk = 23
         targetSdk = 35
         versionCode = 1
@@ -36,6 +37,8 @@ android {
 
 dependencies {
     implementation("com.google.android.play:integrity:1.4.0")
+    implementation(platform("com.google.firebase:firebase-bom:33.15.0"))
+    implementation("com.google.firebase:firebase-analytics")
     implementation(libs.appcompat)
     implementation(libs.material)
     implementation(libs.constraintlayout)
